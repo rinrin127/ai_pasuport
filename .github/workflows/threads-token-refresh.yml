@@ -1,0 +1,38 @@
+name: Threads トークン更新
+
+on:
+  schedule:
+    - cron: "0 21 1 * *"   # 毎月1日 6:00 JST（長期トークンは60日有効なので月次で十分）
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Refresh token
+        id: refresh
+        env:
+          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+        run: python threads-automation/src/refresh_token.py
+
+      # Secretの書き戻しには secrets:write 権限を持つPAT（GH_PAT）が必要。
+      # 未設定の場合このステップは失敗するので、手動でSecretを更新してください。
+      - name: Update secret
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::GH_PAT が未設定のためSecretを自動更新できません。ログは残さないため、ローカルで refresh_token.py を実行して手動更新してください。"
+            exit 0
+          fi
+          gh secret set THREADS_ACCESS_TOKEN --repo "${{ github.repository }}" --body "${{ steps.refresh.outputs.new_token }}"
+          echo "Secret THREADS_ACCESS_TOKEN を更新しました"

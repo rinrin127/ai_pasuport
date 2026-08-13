@@ -1,0 +1,16 @@
+{
+  "scheduled_at": "2026-08-15T07:00:00+09:00",
+  "type": "A",
+  "text": "3000円の知育玩具より、0円の松ぼっくり。\n\n元・国立青少年施設の指導員として断言します。\n（ここに本文。500文字以内）\n\nみなさんは公園で何拾ってますか？",
+  "reply_text": "【PR】投稿で紹介した自然図鑑はこちら\nhttps://example.com/xxxx",
+  "image_url": null,
+  "predicted_score": {
+    "hook": 16,
+    "concrete": 15,
+    "contrarian": 14,
+    "empathy": 16,
+    "comment": 14,
+    "total": 75
+  },
+  "status": "scheduled"
+}
