@@ -1,0 +1,3 @@
+requests>=2.31
+# 投稿のAI生成（create_post.py --generate）を使う場合のみ必要
+anthropic>=0.60
