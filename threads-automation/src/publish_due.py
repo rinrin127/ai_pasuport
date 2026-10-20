@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from compliance import run_checks
 from threads_client import ThreadsClient
 
 JST = ZoneInfo("Asia/Tokyo")
@@ -79,6 +80,20 @@ def main() -> int:
         if sched.tzinfo is None:
             sched = sched.replace(tzinfo=JST)
         if sched > now:
+            continue
+
+        # 投稿直前の最終コンプラ検査（NGワード・#PR・文字数・重複）
+        issues = run_checks(post)
+        if issues:
+            post["status"] = "blocked"
+            post["compliance_issues"] = issues
+            save_json(path, post)
+            print(
+                f"[blocked] {path.name}: コンプラ検査NG "
+                + "; ".join(f"{h['label']}「{h['matched']}」" for h in issues),
+                file=sys.stderr,
+            )
+            errors += 1
             continue
 
         print(f"[publish] {path.name}: {post['text'][:30]}...")

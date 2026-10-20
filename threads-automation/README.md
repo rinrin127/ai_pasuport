@@ -50,13 +50,28 @@ curl -s "https://graph.threads.net/v1.0/me?fields=id,username&access_token=<長�
 | `THREADS_USER_ID` | 手順2-3で確認したID（必須） |
 | `GH_PAT` | secrets書き込み権限付きPAT（任意・トークン自動更新用） |
 
-### 4. ローカル環境（投稿作成に使う場合）
+### 4. 楽天アフィリエイト連携（任意）
+
+`--rakuten` で商品リサーチ→アフィリンク自動挿入を使う場合に設定:
+
+1. **アプリID**: https://webservice.rakuten.co.jp/ で「アプリID発行」（無料・即時）
+2. **アフィリエイトID**: https://affiliate.rakuten.co.jp/ ログイン後「パラメータ確認」で表示される `xxxx.xxxx.xxxx` 形式のID
+3. 環境変数 `RAKUTEN_APP_ID` / `RAKUTEN_AFFILIATE_ID` に設定（投稿作成はローカル実行なのでSecretsは不要）
+4. 疎通確認: `python src/rakuten_client.py --test`
+
+商品の選定基準（レビュー100件以上・★4.2以上・1,500〜6,000円等）は `config/rakuten.json`、
+投稿生成のペルソナ・6フック型は `config/rakuten_persona.md`、
+追加NGワードは `config/ng_words.txt` で管理します（threads-rakuten-affiliスキルと同じ基準）。
+
+### 5. ローカル環境（投稿作成に使う場合）
 
 ```bash
 cd threads-automation
 pip install -r requirements.txt
 export THREADS_ACCESS_TOKEN="..."   # 手動テスト投稿する場合
 export ANTHROPIC_API_KEY="..."      # AI生成を使う場合
+export RAKUTEN_APP_ID="..."         # 楽天連携を使う場合
+export RAKUTEN_AFFILIATE_ID="..."
 ```
 
 ---
@@ -81,6 +96,22 @@ python src/create_post.py \
 python src/create_post.py --generate \
   --theme "雨の日の室内遊びネタ" --type B --at "2026-08-15 07:00"
 ```
+
+**楽天アフィリエイト投稿**（商品検索→本文AI生成→ぶら下げにアフィリンク自動挿入）:
+
+```bash
+# キーワードで商品検索し、スコア1位の商品で投稿を生成して予約
+python src/create_post.py --generate --rakuten "美顔ローラー" --at "2026-10-21 07:00"
+
+# 検索2位の商品を使う / 本文は手動で書く
+python src/create_post.py --rakuten "美顔ローラー" --pick 2 --text "..." --now
+
+# 商品リサーチだけしたい（キーワード or 設定ジャンル巡回）
+python src/rakuten_client.py --keyword "美顔ローラー"
+python src/rakuten_client.py --genres
+```
+
+楽天投稿はキュー投入前に**コンプラ検査**（薬機法・景表法NGワード／#PR自動付与／500字制限／過去投稿との重複）が自動で走り、NGならブロックされます。投稿直前（GitHub Actions側）にも同じ検査が最終ゲートとして入ります。
 
 どちらも `queue/` にJSONが作られるので、**git push すると予約完了**です。JSONを直接書いてもOK（`queue/_example.json.sample` 参照）。
 
@@ -115,7 +146,13 @@ threads-automation/
 │   ├── create_post.py      # 投稿作成CLI（手動 / AI生成）
 │   ├── publish_due.py      # 予約投稿の実行（Actionsが呼ぶ）
 │   ├── analyze.py          # 分析・採点・レポート（Actionsが呼ぶ）
+│   ├── rakuten_client.py   # 楽天商品検索（アフィリンク取得・商品スコアリング）
+│   ├── compliance.py       # コンプラ検査（NGワード・#PR・重複）
 │   └── refresh_token.py    # トークンリフレッシュ
+├── config/
+│   ├── rakuten.json        # 商品選定フィルタ・巡回ジャンル
+│   ├── rakuten_persona.md  # 楽天投稿のペルソナ・6フック型（AI生成プロンプト）
+│   └── ng_words.txt        # 追加NGワード（週次で追記更新）
 ├── queue/                  # 予約待ちの投稿JSON
 ├── published/              # 公開済み投稿（インサイト・採点結果も蓄積）
 ├── reports/                # 日次分析レポート
